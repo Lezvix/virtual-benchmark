@@ -1,0 +1,31 @@
+{
+  "name": "virtuality-benchmark",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "analyze": "tsc -b && vite build --mode analyze && node scripts/report-bundle.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.11.2",
+    "@tanstack/react-virtual": "^3.14.13",
+    "preact": "11.0.0-rc.2",
+    "react-window": "^2.3.1",
+    "virtua": "^0.51.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^24.13.3",
+    "rollup-plugin-visualizer": "^7.1.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "overrides": {
+    "preact": "11.0.0-rc.2",
+    "react": "npm:@preact/compat",
+    "react-dom": "npm:@preact/compat"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "recordedDate": "2026-09-17",
+  "source": "Completed production-preview run observed in the Codex in-app browser during the preceding optimization task; values transcribed from the result UI",
+  "environment": "Windows; Codex in-app browser; Preact compatibility layer. Browser version, CPU, viewport dimensions and display refresh rate were not recorded.",
+  "samplesPerEngine": 54,
+  "rounds": 3,
+  "jumpsPerRound": 18,
+  "metric": "Elapsed time from scrollTop assignment to the second subsequent requestAnimationFrame boundary",
+  "precision": "Mean copied from card (2 decimal places); p95 copied from summary (1 decimal place). Raw samples were not retained.",
+  "results": [
+    { "library": "TanStack Virtual", "meanMs": 33.12, "p95Ms": 33.5 },
+    { "library": "virtua", "meanMs": 33.11, "p95Ms": 33.4 },
+    { "library": "react-window", "meanMs": 33.25, "p95Ms": 34.6 }
+  ]
+}
