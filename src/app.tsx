@@ -14,7 +14,7 @@ import {
   type RowComponentProps,
   type ListImperativeAPI,
 } from 'react-window'
-import { experimental_VGrid as VGrid } from 'virtua'
+import { Virtualizer } from 'virtua'
 import './app.css'
 
 const ROW_COUNT = 200_000
@@ -31,11 +31,7 @@ type RowData = {
   amount: string
   updated: string
 }
-type EngineController = {
-  scrollTo: (offset: number) => void
-  getMaxScroll: () => number
-  getRenderedRows: () => number
-}
+type EngineController = { getElement: () => HTMLElement | null }
 type ScrollHandler = (id: EngineId, offset: number) => void
 
 const engines: Array<{
@@ -56,7 +52,7 @@ const engines: Array<{
     id: 'virtua',
     name: 'virtua',
     eyebrow: 'Components',
-    detail: 'Готовый VGrid с измерением viewport',
+    detail: 'Virtualizer с ленивым рендерингом строк',
     color: '#f4b860',
   },
   {
@@ -142,17 +138,7 @@ const TanstackTable = memo(function TanstackTable({
     if (element) onScroll('tanstack', element.scrollTop)
   }, [onScroll])
   useLayoutEffect(() => {
-    register({
-      scrollTo: (offset) => {
-        if (rootRef.current) rootRef.current.scrollTop = offset
-      },
-      getMaxScroll: () =>
-        rootRef.current
-          ? rootRef.current.scrollHeight - rootRef.current.clientHeight
-          : 0,
-      getRenderedRows: () =>
-        rootRef.current?.querySelectorAll('[data-row]').length ?? 0,
-    })
+    register({ getElement: () => rootRef.current })
   }, [register])
   return (
     <div
@@ -169,6 +155,7 @@ const TanstackTable = memo(function TanstackTable({
           <div
             class="table-row"
             data-row
+            data-index={item.index}
             role="row"
             key={item.key}
             style={{
@@ -193,7 +180,6 @@ const VirtuaTable = memo(function VirtuaTable({
   onScroll: ScrollHandler
   register: (controller: EngineController) => void
 }) {
-  const rootRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const reportScroll = useCallback(
     (offset: number) => {
@@ -202,42 +188,35 @@ const VirtuaTable = memo(function VirtuaTable({
     [onScroll],
   )
   useLayoutEffect(() => {
-    register({
-      scrollTo: (offset) => {
-        if (viewportRef.current) viewportRef.current.scrollTop = offset
-      },
-      getMaxScroll: () =>
-        viewportRef.current
-          ? viewportRef.current.scrollHeight - viewportRef.current.clientHeight
-          : 0,
-      getRenderedRows: () =>
-        rootRef.current?.querySelectorAll('[data-row]').length ?? 0,
-    })
+    register({ getElement: () => viewportRef.current })
   }, [register])
   const renderRow = useCallback(
-    ({ rowIndex }: { rowIndex: number }) => (
-      <div class="table-row" data-row role="row">
-        <TableCells row={data[rowIndex]} index={rowIndex} />
+    (row: RowData, index: number) => (
+      <div
+        key={row.id}
+        class="table-row"
+        data-row
+        data-index={index}
+        role="row"
+      >
+        <TableCells row={row} index={index} />
       </div>
     ),
-    [data],
+    [],
   )
   return (
-    <div ref={rootRef} class="virtua-host" role="rowgroup">
-      <VGrid
-        domRef={viewportRef}
-        data-engine="virtua"
-        className="table-scroll"
-        style={{ height: VIEWPORT_HEIGHT, overflow: 'auto' }}
-        row={data.length}
-        col={1}
-        cellHeight={ROW_HEIGHT}
-        cellWidth={720}
-        bufferSize={ROW_HEIGHT * OVERSCAN}
-        onScroll={reportScroll}
-      >
-        {renderRow}
-      </VGrid>
+    <div class="virtua-host" role="rowgroup">
+      <div ref={viewportRef} data-engine="virtua" class="table-scroll">
+        <Virtualizer
+          scrollRef={viewportRef}
+          data={data}
+          itemSize={ROW_HEIGHT}
+          bufferSize={ROW_HEIGHT * OVERSCAN}
+          onScroll={reportScroll}
+        >
+          {renderRow}
+        </Virtualizer>
+      </div>
     </div>
   )
 })
@@ -262,18 +241,7 @@ const ReactWindowTable = memo(function ReactWindowTable({
     [onScroll],
   )
   useLayoutEffect(() => {
-    register({
-      scrollTo: (offset) => {
-        const element = getRoot()
-        if (element) element.scrollTop = offset
-      },
-      getMaxScroll: () => {
-        const element = getRoot()
-        return element ? element.scrollHeight - element.clientHeight : 0
-      },
-      getRenderedRows: () =>
-        getRoot()?.querySelectorAll('[data-row]').length ?? 0,
-    })
+    register({ getElement: getRoot })
   }, [getRoot, register])
   return (
     <List
@@ -296,7 +264,13 @@ function WindowRow({
   data,
 }: RowComponentProps<{ data: RowData[] }>) {
   return (
-    <div class="table-row" data-row role="row" style={style}>
+    <div
+      class="table-row"
+      data-row
+      data-index={index}
+      role="row"
+      style={style}
+    >
       <TableCells row={data[index]} index={index} />
     </div>
   )
@@ -306,7 +280,14 @@ function RowCount({ count }: { count: Signal<number> }) {
   return <>{String(count.value).padStart(2, '0')}</>
 }
 
-type BenchmarkResult = { average: number; p95: number }
+type BenchmarkResult = {
+  average: number
+  script: number
+  median: number
+  p95: number
+  rows: number
+  samples: JumpSample[]
+}
 
 function EngineCard({
   engine,
@@ -358,7 +339,9 @@ function EngineCard({
       <div class="engine-card-foot">
         <span>fixed row · {ROW_HEIGHT}px</span>
         {result ? (
-          <strong>{result.average.toFixed(2)} ms avg</strong>
+          <strong>
+            {result.average.toFixed(2)} ms avg · {result.rows.toFixed(0)} rows
+          </strong>
         ) : (
           <span>ready</span>
         )}
@@ -371,9 +354,72 @@ function nextFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
 }
 
+function countRows(element: HTMLElement) {
+  return element.querySelectorAll('[data-row]').length
+}
+
+function firstVisibleIndex(element: HTMLElement) {
+  const top = element.getBoundingClientRect().top + 0.5
+  for (const row of element.querySelectorAll<HTMLElement>('[data-row]')) {
+    const box = row.getBoundingClientRect()
+    if (box.top <= top && box.bottom > top) return Number(row.dataset.index)
+  }
+  return -1
+}
+
+type JumpSample = { duration: number; script: number; rows: number }
+
+// Times the main-thread work of one frame: from scroll event dispatch until
+// that frame's rendering is done. Idle time before vsync is excluded.
+// `script` ends at the frame's rAF: scroll handlers and the resulting commit.
+function measureJump(element: HTMLElement, position: number) {
+  return new Promise<JumpSample>((resolve, reject) => {
+    const cleanup = () => {
+      window.clearTimeout(timeout)
+      window.removeEventListener('scroll', begin, true)
+    }
+    const timeout = window.setTimeout(() => {
+      cleanup()
+      reject(new Error('Scroll event did not arrive.'))
+    }, 1000)
+    // A capture listener on window runs before the engine's listener on the scroller.
+    const begin = (event: Event) => {
+      if (event.target !== element) return
+      cleanup()
+      const start = performance.now()
+      // rAF requested during scroll dispatch runs in the same frame; the posted
+      // message runs as the next task, after style, layout, observers and paint.
+      requestAnimationFrame(() => {
+        const script = performance.now() - start
+        const channel = new MessageChannel()
+        channel.port1.onmessage = () => {
+          const duration = performance.now() - start
+          const expected = Math.floor(position / ROW_HEIGHT)
+          const actual = firstVisibleIndex(element)
+          if (actual !== expected)
+            reject(
+              new Error(
+                `Rows not committed in the scroll frame: expected ${expected}, saw ${actual}.`,
+              ),
+            )
+          else resolve({ duration, script, rows: countRows(element) })
+        }
+        channel.port2.postMessage(null)
+      })
+    }
+    window.addEventListener('scroll', begin, { capture: true, passive: true })
+    element.scrollTop = position
+  })
+}
+
 export function App() {
   const data = useMemo(createRows, [])
   const controllers = useRef<Partial<Record<EngineId, EngineController>>>({})
+  const getElement = (id: EngineId) => controllers.current[id]?.getElement()
+  const scrollTo = (id: EngineId, offset: number) => {
+    const element = getElement(id)
+    if (element) element.scrollTop = offset
+  }
   const syncing = useRef(false)
   const benchmarking = useRef(false)
   const syncEnabled = useRef(true)
@@ -408,8 +454,10 @@ export function App() {
     if (running) return
     const timer = window.setInterval(() => {
       if (benchmarking.current) return
-      for (const { id } of engines)
-        renderedRows[id].value = controllers.current[id]?.getRenderedRows() ?? 0
+      for (const { id } of engines) {
+        const element = getElement(id)
+        renderedRows[id].value = element ? countRows(element) : 0
+      }
     }, 250)
     return () => window.clearInterval(timer)
   }, [renderedRows, running])
@@ -417,7 +465,7 @@ export function App() {
     if (benchmarking.current || !syncEnabled.current || syncing.current) return
     syncing.current = true
     engines.forEach(({ id: targetId }) => {
-      if (targetId !== id) controllers.current[targetId]?.scrollTo(offset)
+      if (targetId !== id) scrollTo(targetId, offset)
     })
     requestAnimationFrame(() => {
       syncing.current = false
@@ -456,7 +504,7 @@ export function App() {
       await nextFrame()
       check()
     }
-    const samples: Record<EngineId, number[]> = {
+    const samples: Record<EngineId, JumpSample[]> = {
       tanstack: [],
       virtua: [],
       'react-window': [],
@@ -464,21 +512,25 @@ export function App() {
     try {
       // Finish UI commits, pending sync events and scroll-end timers before warming up.
       await settle()
-      const maxScroll = Math.min(
-        ...engines.map(({ id }) => {
-          const controller = controllers.current[id]
-          if (!controller) throw new Error(`Engine not ready: ${id}`)
-          return controller.getMaxScroll()
+      const elements = Object.fromEntries(
+        engines.map(({ id }) => {
+          const element = getElement(id)
+          if (!element) throw new Error(`Engine not ready: ${id}`)
+          return [id, element]
         }),
+      ) as Record<EngineId, HTMLElement>
+      const maxScroll = Math.min(
+        ...engines.map(
+          ({ id }) => elements[id].scrollHeight - elements[id].clientHeight,
+        ),
       )
       if (maxScroll <= 0) throw new Error('Scrollable viewport is not ready.')
       const positions = Array.from({ length: 18 }, (_, index) =>
         Math.round((maxScroll * (index + 1)) / 18),
       )
       for (const { id } of engines) {
-        const controller = controllers.current[id]!
         for (const position of [0, maxScroll / 2, maxScroll, 0]) {
-          controller.scrollTo(position)
+          elements[id].scrollTop = position
           await nextFrame()
           await nextFrame()
           check()
@@ -489,39 +541,38 @@ export function App() {
       for (let round = 0; round < engines.length; round++) {
         for (let slot = 0; slot < engines.length; slot++) {
           const { id } = engines[(round + slot) % engines.length]
-          const controller = controllers.current[id]!
-          controller.scrollTo(0)
+          elements[id].scrollTop = 0
           await settle()
           for (const position of positions) {
             await nextFrame()
             check()
-            const start = performance.now()
-            controller.scrollTo(position)
-            // Two frame boundaries allow the scroll event and its resulting commit to run.
-            await nextFrame()
-            await nextFrame()
-            const elapsed = performance.now() - start
+            const sample = await measureJump(elements[id], position)
             check()
-            samples[id].push(elapsed)
+            samples[id].push(sample)
           }
           await settle()
         }
       }
       const nextResults: Partial<Record<EngineId, BenchmarkResult>> = {}
       for (const { id } of engines) {
-        const values = samples[id]
+        const values = samples[id].map((sample) => sample.duration)
         const sorted = [...values].sort((a, b) => a - b)
+        const mean = (list: number[]) =>
+          list.reduce((sum, value) => sum + value, 0) / list.length
         nextResults[id] = {
-          average:
-            values.reduce((sum, value) => sum + value, 0) / values.length,
+          samples: samples[id],
+          average: mean(values),
+          script: mean(samples[id].map((sample) => sample.script)),
+          median: sorted[Math.ceil(sorted.length * 0.5) - 1],
           p95: sorted[Math.ceil(sorted.length * 0.95) - 1],
+          rows: mean(samples[id].map((sample) => sample.rows)),
         }
       }
       setResults(nextResults)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
-      engines.forEach(({ id }) => controllers.current[id]?.scrollTo(0))
+      engines.forEach(({ id }) => scrollTo(id, 0))
       await new Promise((resolve) => setTimeout(resolve, 200))
       document.removeEventListener('visibilitychange', invalidate)
       window.removeEventListener('resize', invalidate)
@@ -615,7 +666,7 @@ export function App() {
           />
         ))}
       </section>
-      <section class="benchmark-strip">
+      <section class="benchmark-strip" data-results={JSON.stringify(results)}>
         <div>
           <span class="strip-label">BENCHMARK</span>
           <strong>
@@ -630,7 +681,7 @@ export function App() {
         <div class="benchmark-legend">
           <span>
             <i class="legend-line" />
-            Two-frame scroll latency
+            Main-thread work per scroll frame
           </span>
           <span>54 jumps / engine · warmed · rotating order</span>
         </div>
@@ -643,8 +694,11 @@ export function App() {
                     <b style={{ color: engine.color }}>
                       {engine.name.split('/')[0]}
                     </b>{' '}
-                    {results[engine.id]!.average.toFixed(1)}ms{' '}
-                    <small>p95 {results[engine.id]!.p95.toFixed(1)}</small>
+                    {results[engine.id]!.average.toFixed(2)}ms{' '}
+                    <small>
+                      p95 {results[engine.id]!.p95.toFixed(2)} · js{' '}
+                      {results[engine.id]!.script.toFixed(2)}
+                    </small>
                   </span>
                 ),
             )}

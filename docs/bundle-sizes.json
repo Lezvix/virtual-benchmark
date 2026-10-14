@@ -4,49 +4,49 @@
     {
       "library": "@tanstack/react-virtual + @tanstack/virtual-core",
       "versions": {
-        "@tanstack/react-virtual": "3.14.13",
-        "@tanstack/virtual-core": "3.17.11"
+        "@tanstack/react-virtual": "3.14.19",
+        "@tanstack/virtual-core": "3.19.4"
       },
-      "file": "assets/tanstack-virtual-CNdPRxmk.js",
-      "minifiedBytes": 25120,
-      "gzipBytes": 7419
+      "file": "assets/tanstack-virtual-CrCWe_uN.js",
+      "minifiedBytes": 26848,
+      "gzipBytes": 8010
     },
     {
-      "library": "virtua (experimental_VGrid)",
+      "library": "virtua (Virtualizer)",
       "versions": {
-        "virtua": "0.51.3"
+        "virtua": "0.53.5"
       },
-      "file": "assets/virtua-Bcj7Nwti.js",
-      "minifiedBytes": 7868,
-      "gzipBytes": 3984
+      "file": "assets/virtua-CeBuzBPZ.js",
+      "minifiedBytes": 7384,
+      "gzipBytes": 3876
     },
     {
       "library": "react-window (List)",
       "versions": {
-        "react-window": "2.3.1"
+        "react-window": "2.3.4"
       },
-      "file": "assets/react-window-BW8fxBGq.js",
-      "minifiedBytes": 8251,
-      "gzipBytes": 3201
+      "file": "assets/react-window-DXWgtqNJ.js",
+      "minifiedBytes": 10712,
+      "gzipBytes": 4009
     },
     {
       "library": "Shared Preact runtime",
       "versions": {
-        "preact": "11.0.0-rc.2"
+        "preact": "11.0.1"
       },
-      "file": "assets/preact-runtime-BARFuq23.js",
-      "minifiedBytes": 17781,
-      "gzipBytes": 7254
+      "file": "assets/preact-runtime-BFswXjA6.js",
+      "minifiedBytes": 17806,
+      "gzipBytes": 7276
     },
     {
       "library": "Shared signals",
       "versions": {
-        "@preact/signals": "2.11.2",
+        "@preact/signals": "2.11.3",
         "@preact/signals-core": "1.14.4"
       },
-      "file": "assets/signals-CIZJ1YvH.js",
-      "minifiedBytes": 7754,
-      "gzipBytes": 2951
+      "file": "assets/signals-BldcG1Ba.js",
+      "minifiedBytes": 7764,
+      "gzipBytes": 2965
     }
   ]
 }

@@ -16,7 +16,7 @@ const definitions = [
     'tanstack-virtual',
     ['@tanstack/react-virtual', '@tanstack/virtual-core'],
   ],
-  ['virtua (experimental_VGrid)', 'virtua', ['virtua']],
+  ['virtua (Virtualizer)', 'virtua', ['virtua']],
   ['react-window (List)', 'react-window', ['react-window']],
   ['Shared Preact runtime', 'preact-runtime', ['preact']],
   ['Shared signals', 'signals', ['@preact/signals', '@preact/signals-core']],

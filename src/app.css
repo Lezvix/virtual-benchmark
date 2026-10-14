@@ -63,6 +63,9 @@ footer { display: flex; justify-content: space-between; padding: 20px 0 0; color
 @media (max-width: 1050px) { .app-shell { padding-inline: 20px; } .hero-grid { align-items: start; flex-direction: column; gap: 30px; } .engine-grid { grid-template-columns: 1fr; } .engine-card { max-width: none; } }
 @media (max-width: 650px) { .app-shell { padding-inline: 14px; } .hero-section { padding-top: 25px; } h1 { font-size: 43px; } .hero-stats { gap: 16px; } .hero-stats strong { font-size: 19px; } .hero-stats span { white-space: normal; } .controls { flex-wrap: wrap; gap: 12px; padding: 13px 0; } .control-copy { flex-basis: 100%; } .benchmark-strip { align-items: start; flex-direction: column; gap: 15px; } .result-summary { margin-left: 0; justify-content: flex-start; } footer { gap: 15px; flex-direction: column; } }
 
-/* Match VGrid cellWidth for the same column layout in every adapter. */
+/* Use the same column layout in every adapter. */
 .table-row { min-width: 720px; max-width: 720px; }
 .engine-table { contain: layout paint; }
+
+/* Keep Virtualizer's containing block as wide as its rows so horizontal scrolling matches the other adapters. */
+.virtua-host .table-scroll > div { min-width: 720px; }

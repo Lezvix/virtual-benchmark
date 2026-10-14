@@ -2,8 +2,16 @@ import preact from '@preact/preset-vite'
 import { defineConfig } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
 
+// Cross-origin isolation raises performance.now() resolution from 100µs to 5µs.
+const isolationHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
+  server: { headers: isolationHeaders },
+  preview: { headers: isolationHeaders },
   plugins: [
     preact(),
     ...(mode === 'analyze'
